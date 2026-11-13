@@ -1,9 +1,9 @@
 <template>
     <div style="background-color: black; min-height: 100vh; padding: 20px;">
         <header style="text-align: center; margin-bottom: 20px;">
-            <select v-model="level" class="level-select">
-                <option value="N4HiRaGaNa">N4-讀音</option>
-                <option value="N5">N5 題庫</option>
+            <select v-model="testType" class="level-select">
+                <option value="HiRaGaNa">N4-讀音</option>
+                <option value="GrammarSelection">N4-文法選填</option>
             </select>
         </header>
 
@@ -12,7 +12,8 @@
 </template>
 
 <script setup>
-    const level = useState('quizLevel', () => 'N4HiRaGaNa');
+    const level = useState('quizLevel', () => 'N4');
+    const testType = useState('quizType', () => 'GrammarSelection');
 </script>
 
 <style>

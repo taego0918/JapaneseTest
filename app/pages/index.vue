@@ -31,23 +31,26 @@
 
     // 1. 直接靜態引入各個級別的 JS 題庫檔案（支援註解）
     import N4HiRaGaNa from '../../assets/data/N4/HiRaGaNa.js';
-    import n5Data from '../../assets/data/N4/HiRaGaNa.js';
+    import N4GrammarSelection from '../../assets/data/N4/GrammarSelection.js';
 
     // 2. 建立題庫對應表
     const quizDatabases = {
-        N4HiRaGaNa: N4HiRaGaNa,
-        N5: n5Data
+        N4HiRaGaNa,
+        N4GrammarSelection
     };
 
     // 3. 取得從 app.vue 傳過來的全域狀態
     const level = useState('quizLevel');
+    const testType = useState('quizType');
 
     // 4. 根據當前 level 初始化對應的資料
-    const data = ref(quizDatabases[level.value] || []);
+    const data = ref(quizDatabases[level.value + testType.value] || []);
+    console.log();
     const isClicked = ref(false);
     const currentIndex = ref(0);
 
     const initIndex = () => {
+        isClicked.value = false;
         if (data.value && data.value.length > 0) {
             currentIndex.value = Math.floor(Math.random() * data.value.length);
         }
@@ -56,8 +59,12 @@
 
     // 5. 關鍵：當上方切換 level 時，自動切換對應的 JS 題庫並重設索引
     watch(level, (newLevel) => {
-        data.value = quizDatabases[newLevel] || [];
-        isClicked.value = false;
+        data.value = quizDatabases[newLevel + testType.value] || [];
+        initIndex();
+    });
+
+    watch(testType, (newType) => {
+        data.value = quizDatabases[level.value + newType] || [];
         initIndex();
     });
 
