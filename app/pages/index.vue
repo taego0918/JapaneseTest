@@ -1,7 +1,5 @@
 <template>
     <div style="text-align: center;">
-        <h1>目前題庫級別：{{ level }}</h1>
-        
         <!-- 確保 data 已經載入完成才顯示 -->
         <div style="text-align: center;" v-if="data && data.length">
             <p class="topic" v-html="randomItem.topic"></p>
@@ -45,13 +43,13 @@
 
     // 4. 根據當前 level 初始化對應的資料
     const data = ref(quizDatabases[level.value + testType.value] || []);
-    console.log();
     const isClicked = ref(false);
     const currentIndex = ref(0);
 
     const initIndex = () => {
         isClicked.value = false;
         if (data.value && data.value.length > 0) {
+            console.log(data.value.length);
             currentIndex.value = Math.floor(Math.random() * data.value.length);
         }
     };
