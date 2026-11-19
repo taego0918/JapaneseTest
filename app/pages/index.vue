@@ -1,7 +1,7 @@
 <template>
     <div style="text-align: center;">
-        <!-- 確保 data 已經載入完成才顯示 -->
-        <div style="text-align: center;" v-if="data && data.length">
+        <!-- 確保已掛載到 Client 且 data 已經載入完成才顯示，避免 SSR 隨機水合不一致 -->
+        <div style="text-align: center;" v-if="isMounted && data && data.length && randomItem">
             <p class="topic" v-html="randomItem.topic"></p>
             <!-- 用洗牌後的 shuffledItems 印出選項 -->
             <p class="option-item"
@@ -25,7 +25,7 @@
 </template>
 
 <script setup>
-    import { ref, computed, watch } from 'vue';
+    import { ref, computed, watch, onMounted } from 'vue';
 
     // 1. 直接靜態引入各個級別的 JS 題庫檔案（支援註解）
     import N4HiRaGaNa from '../../assets/data/N4/HiRaGaNa.js';
@@ -45,25 +45,76 @@
     const data = ref(quizDatabases[level.value + testType.value] || []);
     const isClicked = ref(false);
     const currentIndex = ref(0);
+    const shuffledItems = ref([]);
+    const isMounted = ref(false);
+
+    const randomItem = computed(() => {
+        if (!data.value || data.value.length === 0) return null;
+        return data.value[currentIndex.value];
+    });
+
+    // Fisher-Yates 洗牌法，只在抽題 / 切題庫時執行一次
+    const shuffleCurrentOptions = () => {
+        if (!randomItem.value || !randomItem.value.item) {
+            shuffledItems.value = [];
+            return;
+        }
+        const itemsCopy = [...randomItem.value.item];
+        for (let i = itemsCopy.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [itemsCopy[i], itemsCopy[j]] = [itemsCopy[j], itemsCopy[i]];
+        }
+        shuffledItems.value = itemsCopy;
+    };
+
+    const validateQuestions = () => {
+        if (!data.value || data.value.length === 0) return;
+
+        const invalidQuestions = data.value
+            .map((q, index) => ({ index, topic: q.topic, item: q.item }))
+            .filter(q => Array.isArray(q.item) && q.item.length > 0 && q.item.every(opt => opt.B === false));
+
+        if (invalidQuestions.length > 0) {
+            console.log('發生錯誤：', invalidQuestions);
+        }
+    };
 
     const initIndex = () => {
+        validateQuestions();
         isClicked.value = false;
+
         if (data.value && data.value.length > 0) {
             console.log(data.value.length);
             currentIndex.value = Math.floor(Math.random() * data.value.length);
+            if (randomItem.value && randomItem.value.item) {
+                randomItem.value.item.forEach(opt => {
+                    opt.isWrong = false;
+                });
+            }
+            shuffleCurrentOptions();
+        } else {
+            shuffledItems.value = [];
         }
     };
-    initIndex();
 
-    // 5. 關鍵：當上方切換 level 時，自動切換對應的 JS 題庫並重設索引
+    onMounted(() => {
+        isMounted.value = true;
+        initIndex();
+    });
+
+    // 5. 當上方切換 level 或 testType 時，自動切換對應的 JS 題庫並重設索引
     watch(level, (newLevel) => {
         data.value = quizDatabases[newLevel + testType.value] || [];
-        initIndex();
+        if (isMounted.value) {
+            initIndex();
+        }
     });
 
     watch(testType, (newType) => {
         data.value = quizDatabases[level.value + newType] || [];
-        initIndex();
+        if (isMounted.value) {
+            initIndex();
+        }
     });
 
     const onClick = (option) => {
@@ -73,6 +124,12 @@
     };
 
     const getRandomItem = () => {
+        if (window.getSelection) {
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                selection.removeAllRanges();
+            }
+        }
         if (!data.value || data.value.length === 0) return;
 
         if (randomItem.value && randomItem.value.item) {
@@ -82,24 +139,15 @@
         }
 
         isClicked.value = false;
-        
+
         let newIndex;
         do {
             newIndex = Math.floor(Math.random() * data.value.length);
         } while (newIndex === currentIndex.value && data.value.length > 1);
         currentIndex.value = newIndex;
+
+        shuffleCurrentOptions();
     };
-
-    const randomItem = computed(() => {
-        if (!data.value || data.value.length === 0) return null;
-        return data.value[currentIndex.value];
-    });
-
-    const shuffledItems = computed(() => {
-        if (!randomItem.value || !randomItem.value.item) return [];
-        const itemsCopy = [...randomItem.value.item];
-        return itemsCopy.sort(() => Math.random() - 0.5);
-    });
 </script>
 
 <style scoped>
@@ -124,7 +172,7 @@
     .option-item{
         margin: 10px auto;
         max-width: 500px;
-        width: 100%;
+        width: 90%;
         padding: 10px;
         border-radius:5px;
         border: 1px solid #353848;
